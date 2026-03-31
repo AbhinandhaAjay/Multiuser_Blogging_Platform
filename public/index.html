@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inkling | Start a Conversation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #020617;
+            --card-bg: rgba(30, 41, 59, 0.5);
+            --accent-primary: #2dd4bf;
+            --accent-secondary: #3b82f6;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(45, 212, 191, 0.08) 0px, transparent 50%),
+                radial-gradient(at 90% 90%, rgba(59, 130, 246, 0.08) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* Layout Structure */
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .app-container { grid-template-columns: 1fr; }
+            .sidebar, .info-panel { display: none; }
+        }
+
+        /* Glassmorphism Components */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+        }
+
+        /* Sidebar & Groups */
+        .sidebar { position: sticky; top: 2rem; align-self: start; }
+        .group-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 0.5rem;
+        }
+        .group-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+        }
+
+        /* Main Feed */
+        .feed { display: flex; flex-direction: column; gap: 1.5rem; }
+        .post-card { position: relative; overflow: hidden; }
+        .post-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .post-header { display: flex; align-items: center; gap: 0.5rem; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.75rem; }
+        .post-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+        .post-content { color: var(--text-dim); line-height: 1.6; margin-bottom: 1.5rem; }
+
+        .post-actions { display: flex; align-items: center; gap: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem; }
+        .action-btn { 
+            display: flex; align-items: center; gap: 0.5rem; 
+            cursor: pointer; color: var(--text-dim); transition: var(--transition);
+        }
+        .action-btn:hover { color: var(--accent-primary); }
+        .votes-count { font-weight: 600; min-width: 20px; text-align: center; }
+
+        /* Auth Modals & Forms */
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-card { width: 400px; padding: 2.5rem; }
+        .input-group { margin-bottom: 1.25rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); font-size: 0.9rem; }
+        input {
+            width: 100%; background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 0.75rem; padding: 0.75rem 1rem;
+            color: white; outline: none; transition: var(--transition);
+        }
+        input:focus { border-color: var(--accent-primary); box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); }
+
+        .btn-primary {
+            width: 100%; background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            border: none; border-radius: 0.75rem; padding: 1rem;
+            color: white; font-weight: 600; cursor: pointer; transition: var(--transition);
+        }
+        .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+
+        /* Header Navigation */
+        nav {
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-size: 1.5rem; font-weight: 800; background: linear-gradient(45deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .hidden { display: none !important; }
+
+        /* Comments Section */
+        .comments-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+        }
+        .comment-item {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .comment-author { color: var(--accent-primary); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.25rem; }
+        .comment-text { font-size: 0.9rem; color: var(--text-dim); }
+        
+        .comment-input-area {
+            display: flex; gap: 0.5rem; margin-top: 1rem;
+        }
+        .comment-input-area input { flex: 1; padding: 0.5rem 1rem; font-size: 0.85rem; }
+        .comment-input-area button { width: auto; padding: 0.5rem 1rem; }
+
+        /* Members List */
+        .members-list {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 1rem; margin-top: 1rem;
+        }
+        .member-avatar {
+            width: 40px; height: 40px; border-radius: 50%; background: var(--glass-border);
+            display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+        }
+
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">INKLING</div>
+        <div id="nav-actions">
+            <button class="btn-primary" style="width: auto; padding: 0.5rem 1.5rem;" onclick="showAuth()">Connect</button>
+        </div>
+        <div id="user-info" class="hidden" style="display: flex; align-items: center;">
+            <img id="user-avatar" onclick="showProfile()" style="width: 32px; height: 32px; border-radius: 50%; cursor: pointer; object-fit: cover; margin-right: 0.75rem; border: 2px solid var(--accent-primary);">
+            <span id="username-display" style="margin-right: 1.5rem; font-weight: 600; font-size: 1.1rem;"></span>
+            <button class="btn-primary" style="width: auto; padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); margin-right: 0.5rem;" onclick="confirmDeleteAccount()">Delete</button>
+            <button class="btn-primary" style="width: auto; padding: 0.5rem 1.5rem;" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.2rem; color: var(--accent-primary);">FEED</h3>
+                <div class="group-item" id="feed-popular" onclick="setFeedType('popular')">
+                    <i data-lucide="globe" style="width: 18px;"></i>
+                    <span>Popular</span>
+                </div>
+                <div class="group-item" id="feed-home" onclick="setFeedType('home')">
+                    <i data-lucide="home" style="width: 18px;"></i>
+                    <span>My Home</span>
+                </div>
+                
+                <h3 style="margin: 2rem 0 1rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.2rem; color: var(--accent-primary);">COMMUNITIES</h3>
+                <div id="groups-list"></div>
+                <button class="btn-primary" style="margin-top: 1.25rem; padding: 0.75rem;" onclick="showCreateGroup()">Build Community</button>
+            </div>
+
+            <div id="selected-group-info" class="glass-card hidden" style="margin-top: 2rem;">
+                <h3 id="sel-group-name" style="margin-bottom: 0.5rem;"></h3>
+                <p id="sel-group-desc" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1.5rem;"></p>
+                <div id="group-action-btn"></div>
+                <div style="margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                    <h4 style="font-size: 0.8rem; margin-bottom: 1rem;">MEMBERS</h4>
+                    <div id="sel-group-members" class="members-list"></div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Main Feed -->
+        <main class="feed">
+            <div id="create-post-prompt" class="glass-card hidden" onclick="showCreatePost()" style="cursor: pointer; text-align: center; color: var(--text-dim); transition: var(--transition);">
+                Start a conversation...
+            </div>
+            <div id="posts-list"></div>
+        </main>
+
+        <!-- Info Panel -->
+        <aside class="info-panel">
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem;">Welcome to LoopReddit</h3>
+                <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.6;">
+                    The premium space for high-quality discussions. Join communities, share ideas, and connect with peers.
+                </p>
+                <div style="margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-dim);">Online Users</span>
+                        <span style="color: var(--accent-secondary); font-weight: 600;">1,242</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-overlay">
+        <div id="auth-modal" class="glass-card" style="width: 400px;">
+            <h2 id="auth-title" style="margin-bottom: 2rem; text-align: center; letter-spacing: 0.1rem;">WELCOME</h2>
+            <div id="auth-form-container">
+                <div class="input-group" id="username-group">
+                    <label>Username</label>
+                    <input type="text" id="auth-username" placeholder="Choose a handle">
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="auth-email" placeholder="you@example.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="auth-password" placeholder="••••••••">
+                </div>
+                <button class="btn-primary" id="auth-submit" onclick="handleAuth()">Get Started</button>
+                
+                <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem;">
+                    <span id="auth-switch-text">Already have an account?</span>
+                    <a href="#" onclick="toggleAuthMode()" id="auth-switch-link" style="color: var(--accent-primary); text-decoration: none; font-weight: 600; margin-left: 0.5rem;">Login</a>
+                </div>
+                <div id="forgot-password-link" style="margin-top: 1rem; text-align: center; font-size: 0.85rem;" class="hidden">
+                    <a href="#" onclick="showForgotPassword()" style="color: var(--text-dim); text-decoration: none;">Forgot Password?</a>
+                </div>
+            </div>
+
+            <!-- Forgot Password State -->
+            <div id="forgot-password-container" class="hidden">
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.4;">Enter your email and we'll send you a link to reset your password.</p>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="forgot-email" placeholder="you@example.com">
+                </div>
+                <button class="btn-primary" onclick="handleForgotPassword()">Send Reset Link</button>
+                <button onclick="hideForgotPassword()" style="background: none; border: none; color: var(--text-dim); width: 100%; margin-top: 1rem; cursor: pointer;">Back to Login</button>
+            </div>
+
+            <!-- Reset Password State -->
+            <div id="reset-password-container" class="hidden">
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem;">Set a new secure password for your account.</p>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="reset-password" placeholder="••••••••">
+                </div>
+                <button class="btn-primary" onclick="handleResetPassword()">Reset Password</button>
+            </div>
+            
+            <button onclick="closeAuth()" style="background: none; border: none; color: var(--text-dim); width: 100%; margin-top: 1.5rem; cursor: pointer; font-size: 0.85rem;">Maybe later</button>
+        </div>
+    </div>
+
+    <!-- Create Group/Post Modals (Generic Container) -->
+    <div id="modal-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div id="group-modal" class="glass-card hidden" style="width: 500px;">
+            <h2 style="margin-bottom: 1.5rem;">Create Community</h2>
+            <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="group-name" placeholder="r/community">
+            </div>
+            <div class="input-group">
+                <label>Description</label>
+                <input type="text" id="group-desc" placeholder="What's it about?">
+            </div>
+            <button class="btn-primary" onclick="handleCreateGroup()">Build Community</button>
+            <button onclick="closeModals()" style="background: none; border: none; color: var(--text-dim); width: 100%; margin-top: 1rem; cursor: pointer;">Cancel</button>
+        </div>
+
+        <div id="post-modal" class="glass-card hidden" style="width: 600px;">
+            <h2 style="margin-bottom: 1.5rem;">Draft Post</h2>
+            <div class="input-group">
+                <label>Destination</label>
+                <select id="post-group-select" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 0.75rem; color: white;"></select>
+            </div>
+            <div class="input-group">
+                <label>Headline</label>
+                <input type="text" id="post-title" placeholder="Catch their attention...">
+            </div>
+            <div class="input-group">
+                <label>Body</label>
+                <textarea id="post-content" rows="6" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 0.75rem; color: white; outline: none;"></textarea>
+            </div>
+            <button class="btn-primary" onclick="handleCreatePost()">Publish</button>
+            <button onclick="closeModals()" style="background: none; border: none; color: var(--text-dim); width: 100%; margin-top: 1rem; cursor: pointer;">Cancel</button>
+        </div>
+
+        <div id="profile-modal" class="glass-card hidden" style="width: 500px;">
+            <h2 style="margin-bottom: 1.5rem;">Personal Identity</h2>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+                <div style="position: relative;">
+                    <img id="profile-preview" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-primary);">
+                    <input type="file" id="avatar-input" style="display: none;" onchange="previewImage(event)">
+                    <button class="btn-primary" style="position: absolute; bottom: 0; right: 0; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="document.getElementById('avatar-input').click()">
+                        <i data-lucide="camera" style="width: 18px;"></i>
+                    </button>
+                </div>
+                <div class="input-group" style="width: 100%;">
+                    <label>Bio</label>
+                    <textarea id="profile-bio" rows="3" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 0.75rem; color: white; outline: none;" placeholder="Tell Inkling about yourself..."></textarea>
+                </div>
+            </div>
+            <button class="btn-primary" style="margin-top: 1rem;" onclick="handleProfileUpdate()">Update Profile</button>
+            <button onclick="closeModals()" style="background: none; border: none; color: var(--text-dim); width: 100%; margin-top: 1rem; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user'));
+        let isSignup = false;
+        let groups = [];
+        let feedType = 'popular';
+
+        // API Helpers
+        const API_BASE = 'http://127.0.0.1:5000/api';
+
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const config = { method, headers };
+            if (data) config.body = JSON.stringify(data);
+
+            const res = await fetch(`${API_BASE}${endpoint}`, config);
+            
+            let json;
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                json = await res.json();
+            } else {
+                const text = await res.text();
+                throw new Error(text || 'Server returned a non-JSON response');
+            }
+            
+            if (!res.ok) throw new Error(json?.message || 'Something went wrong');
+            return json;
+        }
+
+        // UI Initialization
+        function initApp() {
+            lucide.createIcons();
+            updateUIState();
+            loadFeed();
+            loadGroups();
+        }
+
+        function updateUIState() {
+            if (token && user) {
+                document.getElementById('nav-actions').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('username-display').innerText = user.username;
+                document.getElementById('create-post-prompt').classList.remove('hidden');
+                
+                const avatar = document.getElementById('user-avatar');
+                avatar.src = getAvatarUrl(user);
+                avatar.onerror = () => handleAvatarError(avatar, user.username);
+            } else {
+                document.getElementById('nav-actions').classList.remove('hidden');
+                document.getElementById('user-info').classList.add('hidden');
+                document.getElementById('create-post-prompt').classList.add('hidden');
+            }
+            
+            // Handle URL-based reset link
+            const urlParams = new URLSearchParams(window.location.search);
+            const resetToken = urlParams.get('resetToken');
+            if (resetToken && !token) {
+                showResetPassword(resetToken);
+            }
+            
+            // Highlight Feed Type
+            document.getElementById('feed-popular').style.background = feedType === 'popular' ? 'rgba(45, 212, 191, 0.1)' : '';
+            document.getElementById('feed-home').style.background = feedType === 'home' ? 'rgba(45, 212, 191, 0.1)' : '';
+        }
+
+        function setFeedType(type) {
+            feedType = type;
+            updateUIState();
+            loadFeed();
+        }
+
+        // Auth Logic
+        function toggleAuthMode() {
+            isSignup = !isSignup;
+            document.getElementById('auth-title').innerText = isSignup ? 'WELCOME' : 'LOG IN';
+            document.getElementById('username-group').classList.toggle('hidden', !isSignup);
+            document.getElementById('auth-submit').innerText = isSignup ? 'Get Started' : 'Sign In';
+            document.getElementById('auth-switch-text').innerText = isSignup ? 'Already have an account?' : 'New to Inkling?';
+            document.getElementById('auth-switch-link').innerText = isSignup ? 'Login' : 'Sign up';
+            document.getElementById('forgot-password-link').classList.toggle('hidden', isSignup);
+            hideForgotPassword();
+        }
+
+        function showAuth() { document.getElementById('auth-overlay').style.display = 'flex'; }
+        function closeAuth() { document.getElementById('auth-overlay').style.display = 'none'; }
+
+        function getAvatarUrl(u) {
+            if (u?.profilePicture) return `http://127.0.0.1:5000${u.profilePicture}`;
+            // If u is null or author was deleted, p.author is null
+            const seed = u?.username || 'anon';
+            return `https://api.dicebear.com/7.x/adventurers/svg?seed=${seed}`;
+        }
+
+        // Helper to handle broken images by showing a colored circle with initials
+        function handleAvatarError(img, username) {
+            img.onerror = null; // Prevent infinite loop
+            const initials = (username || '??').substring(0, 2).toUpperCase();
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#2dd4bf'; // Brand Teal
+            ctx.beginPath();
+            ctx.arc(50, 50, 50, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 40px Outfit';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(initials, 50, 50);
+            img.src = canvas.toDataURL();
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('auth-username').value;
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            try {
+                const endpoint = isSignup ? '/auth/signup' : '/auth/login';
+                const body = isSignup ? { username, email, password } : { email, password };
+                const res = await apiRequest(endpoint, 'POST', body);
+                
+                token = res.token;
+                user = res.user;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                closeAuth();
+                updateUIState();
+                initApp();
+                if (isSignup) alert("Welcome! Check your email to verify your account.");
+            } catch (err) { alert(err.message); }
+        }
+
+        // --- Forgot Password Logic ---
+        let currentResetToken = null;
+
+        function showForgotPassword() {
+            document.getElementById('auth-form-container').classList.add('hidden');
+            document.getElementById('forgot-password-container').classList.remove('hidden');
+            document.getElementById('auth-title').innerText = 'RESET';
+        }
+
+        function hideForgotPassword() {
+            document.getElementById('auth-form-container').classList.remove('hidden');
+            document.getElementById('forgot-password-container').classList.add('hidden');
+            document.getElementById('reset-password-container').classList.add('hidden');
+            document.getElementById('auth-title').innerText = isSignup ? 'WELCOME' : 'LOG IN';
+        }
+
+        async function handleForgotPassword() {
+            const email = document.getElementById('forgot-email').value;
+            try {
+                const res = await apiRequest('/auth/forgot-password', 'POST', { email });
+                alert(res.message);
+                hideForgotPassword();
+            } catch (err) { alert(err.message); }
+        }
+
+        function showResetPassword(token) {
+            currentResetToken = token;
+            showAuth();
+            document.getElementById('auth-form-container').classList.add('hidden');
+            document.getElementById('reset-password-container').classList.remove('hidden');
+            document.getElementById('auth-title').innerText = 'NEW PASSWORD';
+        }
+
+        async function handleResetPassword() {
+            const password = document.getElementById('reset-password').value;
+            try {
+                const res = await apiRequest(`/auth/reset-password/${currentResetToken}`, 'POST', { password });
+                alert(res.message);
+                window.history.replaceState({}, document.title, window.location.pathname);
+                hideForgotPassword();
+                closeAuth();
+            } catch (err) { alert(err.message); }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            token = null;
+            user = null;
+            updateUIState();
+            window.location.reload();
+        }
+
+        // Group & Post Logic
+        async function loadGroups() {
+            try {
+                groups = await apiRequest('/groups');
+                const list = document.getElementById('groups-list');
+                const select = document.getElementById('post-group-select');
+                
+                list.innerHTML = groups.map(g => `
+                    <div class="group-item" onclick="viewGroup('${g._id}')">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
+                            ${g.name[0].toUpperCase()}
+                        </div>
+                        <span>r/${g.name}</span>
+                    </div>
+                `).join('');
+
+                select.innerHTML = groups.map(g => `<option value="${g._id}">r/${g.name}</option>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadFeed() {
+            try {
+                let posts = await apiRequest('/posts');
+                
+                // Smart Curation: Filter by joined groups for 'Home' feed
+                if (feedType === 'home' && user) {
+                    posts = posts.filter(p => user.joinedGroups.includes(p.group?._id));
+                }
+
+                const list = document.getElementById('posts-list');
+                list.innerHTML = posts.map(p => {
+                    const authorAvatar = getAvatarUrl(p.author);
+                    const authorName = p.author ? p.author.username : '[deleted]';
+                    return `
+                    <div class="glass-card post-card">
+                        <div class="post-header">
+                            <img src="${authorAvatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);" onerror="handleAvatarError(this, '${authorName}')">
+                            <span style="color: var(--accent-primary); font-weight: 600; cursor: pointer;" onclick="viewGroup('${p.group?._id}')">r/${p.group?.name || 'community'}</span>
+                            <span>• Posted by ${authorName}</span>
+                        </div>
+                        <h2 class="post-title">${p.title}</h2>
+                        <p class="post-content">${p.content}</p>
+                        <div class="post-actions">
+                            <div class="action-btn" onclick="handleVote('${p._id}', 'upvote')">
+                                <i data-lucide="arrow-big-up"></i>
+                                <span class="votes-count">${p.votesCount}</span>
+                            </div>
+                            <div class="action-btn" onclick="handleVote('${p._id}', 'downvote')">
+                                <i data-lucide="arrow-big-down"></i>
+                            </div>
+                            <div class="action-btn" onclick="toggleComments('${p._id}')">
+                                <i data-lucide="message-square"></i>
+                                <span>${p.comments?.length || 0} Comments</span>
+                            </div>
+                        </div>
+                        <div id="comments-${p._id}" class="comments-container hidden">
+                            <div id="comments-list-${p._id}"></div>
+                            <div class="comment-input-area">
+                                <input type="text" id="comment-input-${p._id}" placeholder="Write a comment...">
+                                <button class="btn-primary" onclick="handleAddComment('${p._id}')">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+                lucide.createIcons();
+            } catch (err) { console.error(err); }
+        }
+
+        async function viewGroup(groupId) {
+            try {
+                const group = groups.find(g => g._id === groupId);
+                document.getElementById('selected-group-info').classList.remove('hidden');
+                document.getElementById('sel-group-name').innerText = `r/${group.name}`;
+                document.getElementById('sel-group-desc').innerText = group.description;
+
+                const isMember = group.members.includes(user?.id);
+                document.getElementById('group-action-btn').innerHTML = isMember 
+                    ? `<button class="btn-primary" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444;" onclick="handleLeaveGroup('${groupId}')">Leave Community</button>`
+                    : `<button class="btn-primary" onclick="handleJoinGroup('${groupId}')">Join Community</button>`;
+
+                // Mock members display
+                document.getElementById('sel-group-members').innerHTML = group.members.map(m => `
+                    <div class="member-avatar" title="User ID: ${m}">${m.slice(-2).toUpperCase()}</div>
+                `).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function handleJoinGroup(groupId) {
+            if (!token) return showAuth();
+            try {
+                await apiRequest(`/groups/${groupId}/join`, 'POST');
+                loadGroups();
+                setTimeout(() => viewGroup(groupId), 500);
+            } catch (err) { alert(err.message); }
+        }
+
+        async function handleLeaveGroup(groupId) {
+            try {
+                await apiRequest(`/groups/${groupId}/leave`, 'POST');
+                loadGroups();
+                setTimeout(() => viewGroup(groupId), 500);
+            } catch (err) { alert(err.message); }
+        }
+
+        async function toggleComments(postId) {
+            const container = document.getElementById(`comments-${postId}`);
+            container.classList.toggle('hidden');
+            if (!container.classList.contains('hidden')) {
+                loadComments(postId);
+            }
+        }
+
+        async function loadComments(postId) {
+            try {
+                const comments = await apiRequest(`/comments/post/${postId}`);
+                const list = document.getElementById(`comments-list-${postId}`);
+                list.innerHTML = comments.map(c => {
+                    const commAvatar = getAvatarUrl(c.author);
+                    const commAuthor = c.author ? c.author.username : '[deleted]';
+                    return `
+                    <div class="comment-item">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <img src="${commAvatar}" style="width: 20px; height: 20px; border-radius: 50%;" onerror="handleAvatarError(this, '${commAuthor}')">
+                            <div class="comment-author">${commAuthor}</div>
+                        </div>
+                        <div class="comment-text" style="margin-left: 1.75rem;">${c.content}</div>
+                    </div>
+                `}).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function handleAddComment(postId) {
+            if (!token) return showAuth();
+            const input = document.getElementById(`comment-input-${postId}`);
+            if (!input.value) return;
+            try {
+                await apiRequest('/comments', 'POST', { content: input.value, postId });
+                input.value = '';
+                loadComments(postId);
+            } catch (err) { alert(err.message); }
+        }
+
+        // Profile Management Logic
+        function showProfile() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('profile-modal').classList.remove('hidden');
+            const avatarUrl = user.profilePicture ? `http://127.0.0.1:5000${user.profilePicture}` : `https://api.dicebear.com/7.x/adventurers/svg?seed=${user.username}`;
+            document.getElementById('profile-preview').src = avatarUrl;
+            document.getElementById('profile-bio').value = user.bio || '';
+        }
+
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                document.getElementById('profile-preview').src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        async function handleProfileUpdate() {
+            const bio = document.getElementById('profile-bio').value;
+            const file = document.getElementById('avatar-input').files[0];
+            
+            const formData = new FormData();
+            formData.append('bio', bio);
+            if (file) formData.append('profilePicture', file);
+
+            try {
+                // Modified apiRequest for FormData
+                const res = await fetch(`${API_BASE}/users/profile`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const updatedUser = await res.json();
+                if (!res.ok) throw new Error(updatedUser.message);
+
+                user = updatedUser;
+                localStorage.setItem('user', JSON.stringify(user));
+                closeModals();
+                updateUIState();
+                loadFeed();
+            } catch (err) { alert(err.message); }
+        }
+
+        async function confirmDeleteAccount() {
+            if (confirm("Are you sure you want to permanently delete your account? Your posts and comments will remain, but your identity will be removed. This action cannot be undone.")) {
+                try {
+                    const res = await apiRequest('/users/profile', 'DELETE');
+                    alert(res.message);
+                    logout();
+                } catch (err) {
+                    alert(err.message);
+                }
+            }
+        }
+
+
+        function showCreateGroup() {
+            if (!token) return showAuth();
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('group-modal').classList.remove('hidden');
+        }
+
+        function showCreatePost() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('post-modal').classList.remove('hidden');
+        }
+
+        function closeModals() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('group-modal').classList.add('hidden');
+            document.getElementById('post-modal').classList.add('hidden');
+        }
+
+        async function handleCreateGroup() {
+            const name = document.getElementById('group-name').value;
+            const description = document.getElementById('group-desc').value;
+            try {
+                await apiRequest('/groups', 'POST', { name, description });
+                closeModals();
+                loadGroups();
+            } catch (err) { alert(err.message); }
+        }
+
+        async function handleCreatePost() {
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            const groupId = document.getElementById('post-group-select').value;
+            try {
+                await apiRequest('/posts', 'POST', { title, content, groupId });
+                closeModals();
+                loadFeed();
+            } catch (err) { alert(err.message); }
+        }
+
+        async function handleVote(postId, voteType) {
+            if (!token) return showAuth();
+            try {
+                await apiRequest('/votes', 'POST', { postId, voteType });
+                loadFeed();
+            } catch (err) { alert(err.message); }
+        }
+
+        // Run on start
+        initApp();
+    </script>
+</body>
+</html>

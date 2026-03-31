@@ -43,4 +43,5 @@ Thumbs.db
 mongodb_data/
 uploads/
 /public/uploads/
+venv/
 .antigravity/
